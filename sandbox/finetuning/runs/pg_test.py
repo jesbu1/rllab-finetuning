@@ -83,9 +83,10 @@ parser.add_argument('--mlp_baseline', '-mb', action='store_true')
 
 # exp setup
 parser.add_argument('--use_gpu', '-use_gpu', action='store_true')
-parser.add_argument('--n_experiments', '-e', type=int, default=-1)
+parser.add_argument('--n_experiments', '-e', type=int, default=1)
 parser.add_argument('--ec2', '-ec2', action='store_true')
 parser.add_argument('--test', '-test', action='store_true')  # test, dont overwrite prev experiment
+parser.add_argument('--logdir', type=str, default=None)
 
 # all ppo variants
 parser.add_argument('--train_pi_iters', '-tpi', type=int, default=80)
@@ -172,7 +173,7 @@ if args.n_experiments > 0:  # default number of experiments is 10
 
 
 assert algo_name in algo_choices
-assert args.env_name in env_choices
+#assert args.env_name in env_choices
 assert not (args.random_init and args.pretrained_manager)  # don't do weird and confusing command combos
 
 pkl_path = None
@@ -205,9 +206,9 @@ if args.env_name == 'cartpole':
     manager_pkl_path = None
     n_parallel = 1
     latent_dim = 4
-    batch_size = 4000
+    batch_size = 1000
     max_path_length = 100
-    n_itr = 40
+    n_itr = 4750
     discount = 0.99
     if args.learning_rate is None:
         learning_rate = 0.003
@@ -404,6 +405,94 @@ elif args.env_name in {'antlowgeargather', 'antnormalgeargather', 'antlowgeargat
     max_path_length = 5e3
     n_itr = 500
     discount = 0.99
+    if args.learning_rate is None:
+        learning_rate = 0.003
+    else:
+        learning_rate = args.learning_rate
+    if args.period != -1:
+        period = args.period
+    else:
+        period = 10
+elif "Fetch" in args.env_name:
+    import gym
+    from gym.wrappers import FlattenDictWrapper
+    from gym.envs.robotics.fetch.pick_and_place import FetchPickAndPlaceEnv
+    from gym.envs.robotics.fetch.push import FetchPushEnv
+    from gym.envs.robotics.fetch.reach import FetchReachEnv
+    from gym.envs.robotics.fetch.slide import FetchSlideEnv
+    from rllab.envs.gym_env import GymEnv
+    if "FetchReach" in args.env_name:
+        env = FetchReachEnv()
+    elif "FetchPush" in args.env_name:
+        env = FetchPushEnv()
+    elif "FetchPickAndPlace" in args.env_name:
+        env = FetchPickAndPlaceEnv()
+    elif "FetchSlide" in args.env_name:
+        env = FetchSlideEnv()
+    #env = gym.make(args.env_name)
+    max_path_length = 50
+    #env = FlattenDictWrapper(env, ["observation", "desired_goal"])
+    env = normalize(GymEnv(env, max_path_length), clip_obs=True, clip_range=(-200, 200))
+    n_parallel = 12
+    #latent_dim = latent_dim
+    batch_size = 4450
+    n_itr = 1000
+    discount = 0.98
+    snn_pkl_path = args.snn_path
+    assert args.pretrained_manager == (args.manager_path is not None)
+    if len(args.pkl_path) > 0:
+        assert args.pretrained_manager
+        assert not args.random_init
+        pkl_path = args.pkl_path
+        snn_pkl_path = None
+        manager_pkl_path = None
+    elif args.pretrained_manager:
+        manager_pkl_path = args.manager_path
+    else:
+        manager_pkl_path = None
+    if args.random_init or args.pkl_path:
+        snn_pkl_path = None
+        manager_pkl_path = None
+    if args.learning_rate is None:
+        learning_rate = 0.003
+    else:
+        learning_rate = args.learning_rate
+    if args.period != -1:
+        period = args.period
+    else:
+        period = 10
+elif "GoalTask" or "KickBall" in args.env_name:
+    from sandbox.finetuning.envs.social_bot import SimpleSocialBotWrapper
+    from rllab.envs.gym_env import GymEnv
+    if "GoalTask" in args.env_name:
+        env = SimpleSocialBotWrapper("SocialBot-PlayGround-v0", task="Goal")
+    elif "KickBall" in args.env_name:
+        env = SimpleSocialBotWrapper("SocialBot-PlayGround-v0", task="KickingBall")
+    
+    #env = gym.make(args.env_name)
+    max_path_length = 100
+    #env = FlattenDictWrapper(env, ["observation", "desired_goal"])
+    env = normalize(GymEnv(env, max_path_length))
+    n_parallel = 1
+    #latent_dim = latent_dim
+    batch_size = 1000
+    n_itr = 5000 if "KickBall" in args.env_name else 2500
+    discount = 0.99
+    snn_pkl_path = args.snn_path
+    assert args.pretrained_manager == (args.manager_path is not None)
+    if len(args.pkl_path) > 0:
+        assert args.pretrained_manager
+        assert not args.random_init
+        pkl_path = args.pkl_path
+        snn_pkl_path = None
+        manager_pkl_path = None
+    elif args.pretrained_manager:
+        manager_pkl_path = args.manager_path
+    else:
+        manager_pkl_path = None
+    if args.random_init or args.pkl_path:
+        snn_pkl_path = None
+        manager_pkl_path = None
     if args.learning_rate is None:
         learning_rate = 0.003
     else:
@@ -647,6 +736,7 @@ elif algo_name == "ppo" or algo_name == "hippo" or algo_name == "hippo_random_p"
             mlp_skill_dependent_baseline=args.mlp_skill_baseline,
             step_size=learning_rate
         )
+        print(policy_params, algo_params)
         if args.pkl_base_dir is None:
             policy = HierarchicalPolicyRandomTime(**policy_params)
             algo = HippoRandomTime(policy=policy, **algo_params)
@@ -913,6 +1003,7 @@ else:
                     stub_method_call=algo.train(),
                     mode=mode,
                     use_gpu=use_gpu,
+                    log_dir=args.logdir,
                     use_cloudpickle=False,
                     pre_commands=['pip install --upgrade pip'],
                     n_parallel=n_parallel,
@@ -931,6 +1022,7 @@ else:
                     stub_method_call=algo.train(),
                     mode=mode,
                     use_gpu=use_gpu,
+                    log_dir=args.logdir,
                     use_cloudpickle=False,
                     pre_commands=['pip install --upgrade pip'],
                     n_parallel=n_parallel,

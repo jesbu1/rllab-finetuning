@@ -50,6 +50,7 @@ class HierarchicalPolicyRandomTime(HierarchicalPolicy):
             continuous_latent=False,
             hidden_sizes_snn=(64, 64),
             hidden_sizes_selector=(32, 32)):
+        print(hidden_sizes_snn, hidden_sizes_selector)
         StochasticPolicy.__init__(self, env_spec)
         self.env = env
         self.periods = np.arange(min_period, max_period + 1)

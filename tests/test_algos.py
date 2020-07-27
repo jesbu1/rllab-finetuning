@@ -4,7 +4,7 @@ from rllab.algos.cem import CEM
 from rllab.algos.cma_es import CMAES
 from rllab.algos.erwr import ERWR
 
-os.environ['THEANO_FLAGS'] = 'device=cpu,mode=FAST_COMPILE,optimizer=None'
+os.environ['THEANO_FLAGS'] = 'device=cuda,mode=FAST_COMPILE,optimizer=None,floatX=float32'
 
 from rllab.algos.vpg import VPG
 from rllab.algos.tnpg import TNPG

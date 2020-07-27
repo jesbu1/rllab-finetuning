@@ -17,6 +17,8 @@ class NormalizedEnv(ProxyEnv, Serializable):
             normalize_reward=False,
             obs_alpha=0.001,
             reward_alpha=0.001,
+            clip_obs=False,
+            clip_range=(-200, 200),
     ):
         Serializable.quick_init(self, locals())
         ProxyEnv.__init__(self, env)
@@ -29,6 +31,8 @@ class NormalizedEnv(ProxyEnv, Serializable):
         self._reward_alpha = reward_alpha
         self._reward_mean = 0.
         self._reward_var = 1.
+        self._clip_obs = clip_obs
+        self._clip_range = clip_range
 
     def _update_obs_estimate(self, obs):
         flat_obs = self.wrapped_env.observation_space.flatten(obs)
@@ -47,12 +51,17 @@ class NormalizedEnv(ProxyEnv, Serializable):
     def _apply_normalize_reward(self, reward):
         self._update_reward_estimate(reward)
         return reward / (np.sqrt(self._reward_var) + 1e-8)
+    
+    def _apply_clip_obs(self, obs):
+        return np.clip(obs, a_min=self._clip_range[0], a_max=self._clip_range[1])
 
     def reset(self):
         ret = self._wrapped_env.reset()
         if self._normalize_obs:
             return self._apply_normalize_obs(ret)
         else:
+            if self._clip_obs:
+                return self._apply_clip_obs(ret)
             return ret
 
     def __getstate__(self):
@@ -87,6 +96,8 @@ class NormalizedEnv(ProxyEnv, Serializable):
         next_obs, reward, done, info = wrapped_step
         if self._normalize_obs:
             next_obs = self._apply_normalize_obs(next_obs)
+        if self._clip_obs:
+            next_obs = self._apply_clip_obs(next_obs)
         if self._normalize_reward:
             reward = self._apply_normalize_reward(reward)
         return Step(next_obs, reward * self._scale_reward, done, **info)

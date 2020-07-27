@@ -15,6 +15,7 @@ import joblib
 import json
 import pickle
 import base64
+import tensorboard_logger
 
 _prefixes = []
 _prefix_str = ''
@@ -38,6 +39,8 @@ _snapshot_gap = 1
 _log_tabular_only = False
 _header_printed = False
 
+_use_tensorboard = True
+tboard_logger = None
 
 def _add_output(file_name, arr, fds, mode='a'):
     if file_name not in arr:
@@ -131,7 +134,12 @@ def log(s, with_prefix=True, with_timestamp=True, color=None):
 
 def record_tabular(key, val):
     _tabular.append((_tabular_prefix_str + str(key), str(val)))
-
+    if _use_tensorboard:
+        global tboard_logger
+        if tboard_logger is None:
+            tboard_logger = tensorboard_logger.Logger(_snapshot_dir + "/tb_log")
+        if str(key) == "Iteration":
+            tboard_logger.log_value(_tabular_prefix_str + str(key), val, val)
 
 def push_tabular_prefix(key):
     _tabular_prefixes.append(key)
@@ -205,7 +213,6 @@ def dump_tabular(*args, **kwargs):
             writer.writerow(tabular_dict)
             tabular_fd.flush()
         del _tabular[:]
-
 
 def pop_prefix():
     del _prefixes[-1]
@@ -315,6 +322,16 @@ def log_parameters_lite(log_file, args):
         log_params["json_args"]["algo"] = stub_to_json(stub_method.obj)
     mkdir_p(os.path.dirname(log_file))
     with open(log_file, "w") as f:
+        # Env is not serializable if custom for some reasoN???
+        def _popitem(obj, key):
+            if key in obj: return obj.pop(key)
+            for k, v in obj.items():
+                if isinstance(v,dict):
+                    item = _popitem(v, key)
+                    if item is not None:
+                        return item
+        while _popitem(log_params, "env") is not None:
+            _popitem(log_params, "env")
         json.dump(log_params, f, indent=2, sort_keys=True, cls=MyEncoder)
 
 

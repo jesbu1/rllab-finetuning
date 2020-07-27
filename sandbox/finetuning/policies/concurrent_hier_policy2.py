@@ -51,6 +51,9 @@ class HierarchicalPolicy(StochasticPolicy, LasagnePowered, Parameterized, Serial
             hidden_sizes_snn=(64, 64),
             hidden_sizes_selector=(32, 32)):
         StochasticPolicy.__init__(self, env_spec)
+        hidden_sizes_snn = (64, 64)
+        hidden_sizes_selector = (32, 32)
+        print(hidden_sizes_snn, hidden_sizes_selector)
         self.env = env
         self.period = period
         self.latent_dim = latent_dim  # unsure

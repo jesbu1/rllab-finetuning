@@ -1,9 +1,11 @@
 from .env_spec import EnvSpec
 import collections
 from cached_property import cached_property
+#from gym.core import Env
 
 
 class Env(object):
+
     def step(self, action):
         """
         Run one timestep of the environment's dynamics. When end of episode
@@ -62,9 +64,19 @@ class Env(object):
 
     @cached_property
     def spec(self):
+        if "Ant" in repr(self):
+            max_episode_steps=5000
+        elif "Block" in repr(self):
+            max_episode_steps=1000
+        elif "Snake" in repr(self):
+            max_episode_steps=8000
+        else:
+            max_episode_steps=50
+        print(repr(self), max_episode_steps)
         return EnvSpec(
             observation_space=self.observation_space,
             action_space=self.action_space,
+            max_episode_steps=max_episode_steps,
         )
 
     @property

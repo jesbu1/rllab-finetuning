@@ -83,7 +83,7 @@ def run_experiment(argv):
     if args.log_dir is None:
         log_dir = osp.join(default_log_dir, args.exp_name)
     else:
-        log_dir = args.log_dir
+        log_dir = osp.join(args.log_dir, args.exp_name)
     tabular_log_file = osp.join(log_dir, args.tabular_log_file)
     text_log_file = osp.join(log_dir, args.text_log_file)
     params_log_file = osp.join(log_dir, args.params_log_file)
@@ -107,7 +107,6 @@ def run_experiment(argv):
     logger.set_snapshot_gap(args.snapshot_gap)
     logger.set_log_tabular_only(args.log_tabular_only)
     logger.push_prefix("[%s] " % args.exp_name)
-
     if args.resume_from is not None:
         data = joblib.load(args.resume_from)
         assert 'algo' in data

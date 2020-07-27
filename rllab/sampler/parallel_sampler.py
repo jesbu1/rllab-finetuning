@@ -10,8 +10,8 @@ import numpy as np
 def _worker_init(G, id):
     if singleton_pool.n_parallel > 1:
         import os
-        os.environ['THEANO_FLAGS'] = 'device=cpu'
-        os.environ['CUDA_VISIBLE_DEVICES'] = ""
+        os.environ['THEANO_FLAGS'] = 'device=cuda,floatX=float32'
+        #os.environ['CUDA_VISIBLE_DEVICES'] = ""
     G.worker_id = id
 
 

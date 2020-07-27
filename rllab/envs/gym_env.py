@@ -4,6 +4,7 @@ import gym.envs
 import gym.spaces
 import traceback
 import logging
+import numpy as np
 
 try:
     from gym.wrappers.monitoring import logger as monitor_logger
@@ -19,6 +20,7 @@ from rllab.core.serializable import Serializable
 from rllab.spaces.box import Box
 from rllab.spaces.discrete import Discrete
 from rllab.spaces.product import Product
+from rllab.spaces.dict import Dict
 from rllab.misc import logger
 
 
@@ -30,7 +32,7 @@ def convert_gym_space(space):
     elif isinstance(space, gym.spaces.Tuple):
         return Product([convert_gym_space(x) for x in space.spaces])
     else:
-        raise NotImplementedError
+        return space 
 
 
 class CappedCubicVideoSchedule(object):
@@ -56,7 +58,7 @@ class NoVideoSchedule(object):
 
 
 class GymEnv(Env, Serializable):
-    def __init__(self, env_name, record_video=True, video_schedule=None, log_dir=None, record_log=True,
+    def __init__(self, env_name, max_timesteps, record_video=True, video_schedule=None, log_dir=None, record_log=True,
                  force_reset=False):
         if log_dir is None:
             if logger.get_snapshot_dir() is None:
@@ -65,9 +67,9 @@ class GymEnv(Env, Serializable):
                 log_dir = os.path.join(logger.get_snapshot_dir(), "gym_log")
         Serializable.quick_init(self, locals())
 
-        env = gym.envs.make(env_name)
+        env = env_name#gym.envs.make(env_name)
         self.env = env
-        self.env_id = env.spec.id
+        #self.env_id = env.spec.id
 
         assert not (not record_log and record_video)
 
@@ -79,14 +81,25 @@ class GymEnv(Env, Serializable):
             else:
                 if video_schedule is None:
                     video_schedule = CappedCubicVideoSchedule()
-            self.env = gym.wrappers.Monitor(self.env, log_dir, video_callable=video_schedule, force=True)
-            self.monitoring = True
+            #self.env = gym.wrappers.Monitor(self.env, log_dir, video_callable=video_schedule, force=True)
+            #self.monitoring = True
 
+        #### NEW
+        #if isinstance(self.env.observation_space, gym.spaces.Dict):
+        #    shape1_low = self.env.observation_space['observation'].low
+        #    shape1_high = self.env.observation_space['observation'].high
+        #    shape2_low = self.env.observation_space['desired_goal'].low
+        #    shape2_high = self.env.observation_space['desired_goal'].high
+        #    self._observation_space = Box(low = np.concatenate((shape1_low, shape2_low)),
+        #                                  high = np.concatenate((shape1_high, shape2_high)))
+        #    import pdb; pdb.set_trace()
+        #else:
         self._observation_space = convert_gym_space(env.observation_space)
         logger.log("observation space: {}".format(self._observation_space))
         self._action_space = convert_gym_space(env.action_space)
         logger.log("action space: {}".format(self._action_space))
-        self._horizon = env.spec.tags['wrapper_config.TimeLimit.max_episode_steps']
+        #self._horizon = env.spec.tags['wrapper_config.TimeLimit.max_episode_steps']
+        self._horizon = max_timesteps
         self._log_dir = log_dir
         self._force_reset = force_reset
 

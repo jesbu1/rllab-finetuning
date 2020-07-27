@@ -133,9 +133,9 @@ class BaseSampler(Sampler):
                 [tensor_utils.pad_tensor_dict(p, max_path_length) for p in agent_infos]
             )
 
-            env_infos = [path["env_infos"] for path in paths]
+            env_infos_pre = [path["env_infos"] for path in paths]
             env_infos = tensor_utils.stack_tensor_dict_list(
-                [tensor_utils.pad_tensor_dict(p, max_path_length) for p in env_infos]
+                [tensor_utils.pad_tensor_dict(p, max_path_length) for p in env_infos_pre]
             )
 
             valids = [np.ones_like(path["returns"]) for path in paths]
@@ -178,5 +178,8 @@ class BaseSampler(Sampler):
         logger.record_tabular('StdReturn', np.std(undiscounted_returns))
         logger.record_tabular('MaxReturn', np.max(undiscounted_returns))
         logger.record_tabular('MinReturn', np.min(undiscounted_returns))
+        env_infos_pre = [path["env_infos"] for path in paths]
+        successes = [info['is_success'][-1] for info in env_infos_pre]
+        logger.record_tabular('AverageSuccess', np.mean(successes))
 
         return samples_data
