@@ -39,7 +39,7 @@ _snapshot_gap = 1
 _log_tabular_only = False
 _header_printed = False
 
-_use_tensorboard = True
+_use_tensorboard = False
 tboard_logger = None
 
 def _add_output(file_name, arr, fds, mode='a'):
